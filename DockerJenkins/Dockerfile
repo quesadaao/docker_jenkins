@@ -1,4 +1,4 @@
-FROM jenkins/jenkins:lts
+FROM jenkins/jenkins:docker
 
 USER root
 
@@ -17,4 +17,8 @@ RUN apt-get update && \
 # Agregar el usuario jenkins al grupo docker
 RUN usermod -aG docker jenkins
 
+# Dar permisos adicionales a Jenkins
+RUN chown -R jenkins:jenkins /var/jenkins_home
+
 USER jenkins
+
