@@ -1,41 +1,55 @@
 FROM ubuntu:bionic-20230530
 USER root
 
-RUN apt-get update && apt-get install -y \
+# Actualizar el sistema base
+RUN apt-get update && apt-get upgrade -y \
     build-essential \
     apt-transport-https \
     ca-certificates \
     curl \
-    gnupg-agent \
-    software-properties-common
+    software-properties-common \
+    fontconfig \
+    gnupg \    
+    openjdk-11-jre
 
-RUN apt update
-RUN apt upgrade
-RUN apt install apt-transport-https ca-certificates curl software-properties-common
-RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-RUN apt update
-RUN apt install docker-ce docker-ce-cli containerd.io
+# Instalar Docker
+RUN install -m 0755 -d /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && chmod a+r /etc/apt/keyrings/docker.gpg
 
-RUN curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee \
+RUN echo \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+  tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+RUN echo \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+  tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+RUN apt-get update && apt-get upgrade -y && apt-get install \
+    docker-ce \
+    docker-ce-cli \
+    containerd.io \
+    docker-buildx-plugin \
+    docker-compose-plugin
+
+# Instalar Jenkins y configurar usuario jenkins
+RUN curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | tee \
     /usr/share/keyrings/jenkins-keyring.asc > /dev/null
 
 RUN echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
-    https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+    https://pkg.jenkins.io/debian-stable binary/ | tee \
     /etc/apt/sources.list.d/jenkins.list > /dev/null
 
-RUN apt-get update && apt-get install -y \ 
-    fontconfig openjdk-11-jre \ 
+RUN apt-get update && apt-get upgrade -y && apt-get install \
+    fontconfig \
+    openjdk-11-jre \
     jenkins
 
-RUN usermod -a -G docker jenkins
+RUN usermod -a -G docker jenkins && mkdir /var/jenkins_home
 
+# Cambiar propietario de directorio de Jenkins
 RUN chown -R jenkins:jenkins /var/jenkins_home
 
 USER jenkins
 
-
-
-
-
-
+EXPOSE 8080
